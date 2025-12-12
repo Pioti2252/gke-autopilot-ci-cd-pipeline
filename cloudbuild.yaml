@@ -1,0 +1,65 @@
+substitutions:
+  _REGION: "europe-central2"            # region Artifact Registry i GKE
+  _REPOSITORY: "app-repo"               # nazwa repo Artifact Registry
+  _IMAGE_NAME: "myapp"                  # nazwa obrazu
+  _GKE_CLUSTER: "gke-dev-cluster"          # <--- PODMIEŃ na swój klaster
+  _GKE_LOCATION: "europe-central2"      # region klastra
+  _K8S_NAMESPACE: "default"
+  _K8S_DEPLOYMENT: "myapp"
+  _K8S_CONTAINER: "myapp"
+
+steps:
+  # 1. BUILD OBRAZU DOCKERA
+  - name: "gcr.io/cloud-builders/docker"
+    id: "docker-build"
+    args:
+      - "build"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:latest"
+      - "."
+
+  # 2. PUSH DO ARTIFACT REGISTRY
+  - name: "gcr.io/cloud-builders/docker"
+    id: "docker-push-latest"
+    args:
+      - "push"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:latest"
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "docker-push-sha"
+    args:
+      - "push"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}"
+
+  # 3. POBRANIE CREDÓW DO AUTOPILOTA (UWAGA: --region)
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: "get-gke-credentials"
+    args:
+      - "container"
+      - "clusters"
+      - "get-credentials"
+      - "${_GKE_CLUSTER}"
+      - "--region"
+      - "${_GKE_LOCATION}"
+      - "--project"
+      - "$PROJECT_ID"
+
+  # 4. PODMIANA OBRAZU W DEPLOYMENCIE
+  - name: "gcr.io/cloud-builders/kubectl"
+    id: "kubectl-set-image"
+    env:
+      - "CLOUDSDK_COMPUTE_REGION=${_GKE_LOCATION}"
+      - "CLOUDSDK_CONTAINER_CLUSTER=${_GKE_CLUSTER}"
+    args:
+      - "set"
+      - "image"
+      - "deployment/${_K8S_DEPLOYMENT}"
+      - "${_K8S_CONTAINER}=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}"
+      - "--namespace"
+      - "${_K8S_NAMESPACE}"
+
+images:
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:latest"
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}"
