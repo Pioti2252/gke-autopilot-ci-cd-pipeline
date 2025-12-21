@@ -2,11 +2,11 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 substitutions:
-  _REGION: "europe-central2"            # region Artifact Registry i GKE
-  _REPOSITORY: "app-repo"               # nazwa repo Artifact Registry
-  _IMAGE_NAME: "myapp"                  # nazwa obrazu
-  _GKE_CLUSTER: "gke-dev-cluster"          # <--- PODMIEŃ na swój klaster
-  _GKE_LOCATION: "europe-central2"      # region klastra
+  _REGION: "europe-central2"            
+  _REPOSITORY: "app-repo"               
+  _IMAGE_NAME: "myapp"                  
+  _GKE_CLUSTER: "gke-dev-cluster"        
+  _GKE_LOCATION: "europe-central2"     
   _K8S_NAMESPACE: "default"
   _K8S_DEPLOYMENT: "myapp"
   _K8S_CONTAINER: "myapp"
@@ -36,7 +36,7 @@ steps:
       - "push"
       - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}"
 
-  # 3. POBRANIE CREDÓW DO AUTOPILOTA (UWAGA: --region)
+  # 3. POBRANIE CREDÓW DO AUTOPILOTA
   - name: "gcr.io/cloud-builders/gcloud"
     id: "get-gke-credentials"
     args:
